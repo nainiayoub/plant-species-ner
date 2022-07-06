@@ -4,7 +4,7 @@ from spacy import displacy
 
 nlp = spacy.load('./ner-species-model-recent')
 st.markdown("""
-## Un modèle de reconnaissance d'entités nommées (NER) pour l'extraction des espèces de plantes
+## Un modèle NER pour l'extraction des espèces de plantes
 
 """)
 example_text = "Oxera subverticillata est une liane robuste de forêt dense humide, largement répartie du centre au nord de la Grande Terre. Espèce assez commune avec une zone d'occurrence (EOO) de 3651 km² et une zone d'occupation de 100 km², O. subverticillata est évalué en Préoccupation Mineure (LC)."
