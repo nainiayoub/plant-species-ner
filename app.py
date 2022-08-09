@@ -51,7 +51,7 @@ elif pages == 'Extraction des organes et descripteurs':
     HTML_WRAPPER = """<div style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 0.25rem; padding: 1rem">{}</div>"""
     
     if text:
-        doc = nlp(text)
+        doc = nlp(text.lower())
         colors = {'ORGANE': "#85C1E9", "DESCRIPTEUR": "#cdcd00"}
         options = {"ents": ['ORGANE', 'DESCRIPTEUR'], "colors": colors}
 
