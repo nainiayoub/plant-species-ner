@@ -12,9 +12,14 @@ def app():
                     """
 
     st.markdown("""
-        ## Un modèle NER pour l'extraction des organes et descripteurs
-        """)
-        
+    ## Un modèle NER pour l'extraction des termes morphologiques: ORGANE et DESCRIPTEUR
+    """)
+    st.markdown(html_temp.format("rgba(55, 53, 47, 0.16)"),unsafe_allow_html=True)
+    st.markdown("""
+    La morphologie végétale est la partie de la botanique qui consiste à décrire la forme et la structure externe des plantes et de leurs organes. 
+    Ce modèle permet d'extraire les termes morphologiques d'une description d'espèce, notament les ___organes___ et les ___descripteurs___, d'une manière grossière.
+    """)
+    # st.warning("La morphologie végétale est la partie de la botanique qui consiste à décrire la forme et la structure externe des plantes et de leurs organes. Ce modèle permet d'extraire les termes morphologiques d'une description d'espèce, notament les ___organes___ et les ___descripteurs___, d'une manière grossière.")
     st.markdown(html_temp.format("rgba(55, 53, 47, 0.16)"),unsafe_allow_html=True)
 
     with st.sidebar:
@@ -44,11 +49,12 @@ def app():
 
             html = displacy.render(doc,style="ent", options=options)
             html = html.replace("\n\n","\n")
-            st.write(HTML_WRAPPER.format(html),unsafe_allow_html=True)
+            with st.expander("Affichage NER"):
+                st.write(HTML_WRAPPER.format(html),unsafe_allow_html=True)
         
         elif output_format == 'Vue table':
             st.markdown("""
-                ### Vue table: Descripteurs par organe
+                
                 Chaque terme `DESCRIPTEUR` est associé au terme `ORGANE` qu'il précède.
             """)
 
