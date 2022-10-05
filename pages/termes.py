@@ -25,6 +25,7 @@ def app():
     with st.sidebar:
         choices = {
             'Modèle v2 (549 organes, 998 descripteurs, 856 rows)': './ner-models/ner-all-model-double-upgraded',
+            'Modèle v3':'./ner-models/ner-all-model-20_09_2022',
             'Modèle v1 (141 organes, 1004 descripteurs, 856 rows)': './ner-models/ner-descripteurs-organes-model-grpd'
         }
         output_choice = ['Highlighted', 'Vue table']
@@ -41,11 +42,27 @@ def app():
     if text:
         doc = nlp(text.lower())
         
+        organes = {}
+        org = ""
+        org_count = 0
+        desc_count = 0
+        if doc.ents:
+            for ent in doc.ents:
+                if ent.label_ == 'ORGANE':
+                    org = ent.text
+                    organes[org] = []  
+                    org_count = org_count + 1
+                else:
+                    if ent.text and org:
+                        organes[org].append(ent.text)
+                        desc_count = desc_count + 1
 
         if output_format == 'Highlighted':
             colors = {'ORGANE': "#cdcd00", "DESCRIPTEUR": "#85C1E9"}
             options = {"ents": ['ORGANE', 'DESCRIPTEUR'], "colors": colors}
 
+            count_str = str(org_count)+" ORGANE et "+str(desc_count)+" DESCRIPTEUR."
+            st.info(count_str)
 
             html = displacy.render(doc,style="ent", options=options)
             html = html.replace("\n\n","\n")
@@ -58,19 +75,23 @@ def app():
                 Chaque terme `DESCRIPTEUR` est associé au terme `ORGANE` qu'il précède.
             """)
 
-            organes = {}
-            org = ""
-            for ent in doc.ents:
-                if ent.label_ == 'ORGANE':
-                    org = ent.text
-                    organes[org] = []  
-                else:
-                    organes[org].append(ent.text)
+            # organes = {}
+            # org = ""
+            # org_count = 0
+            # desc_count = 0
+            # for ent in doc.ents:
+            #     if ent.label_ == 'ORGANE':
+            #         org = ent.text
+            #         organes[org] = []  
+            #         org_count = org_count + 1
+            #     else:
+            #         organes[org].append(ent.text)
+            #         desc_count = desc_count + 1
+            if doc.ents:
+                for o in organes.keys():
+                    organes[o] = ", ".join(organes[o])
 
-            for o in organes.keys():
-                organes[o] = ", ".join(organes[o])
-
-            df_out = pd.DataFrame(organes.items(), columns=['ORGANE', 'DESCRIPTEUR'])
-            st.dataframe(df_out)
+                df_out = pd.DataFrame(organes.items(), columns=['ORGANE', 'DESCRIPTEUR'])
+                st.dataframe(df_out)
 
         
