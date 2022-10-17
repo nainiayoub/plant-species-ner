@@ -24,14 +24,17 @@ def app():
 
     with st.sidebar:
         choices = {
-            'Modèle v2 (549 organes, 998 descripteurs, 856 rows)': './ner-models/ner-all-model-double-upgraded',
             'Modèle v3':'./ner-models/ner-all-model-20_09_2022',
+            'Modèle v4 (fine-grained)':'./ner-models/ner-model-precise-09-10-22',
+            'Modèle v4 (fine-grained updated)': './ner-models/ner-model-precise-12-10-22',
+            'Modèle v2 (549 organes, 998 descripteurs, 856 rows)': './ner-models/ner-all-model-double-upgraded',
             'Modèle v1 (141 organes, 1004 descripteurs, 856 rows)': './ner-models/ner-descripteurs-organes-model-grpd'
         }
-        output_choice = ['Highlighted', 'Vue table']
-
         model_choice = st.selectbox('Version du modèle', choices.keys())
+
+        output_choice = ['Highlighted', 'Vue dataframe', 'Vue dictionnaire']
         output_format = st.selectbox("Format de l'output", output_choice)
+        
         
 
     nlp = spacy.load(choices[model_choice])
@@ -46,8 +49,10 @@ def app():
         org = ""
         org_count = 0
         desc_count = 0
+        labels = []
         if doc.ents:
             for ent in doc.ents:
+                labels.append(ent.label_)
                 if ent.label_ == 'ORGANE':
                     org = ent.text
                     organes[org] = []  
@@ -56,42 +61,133 @@ def app():
                     if ent.text and org:
                         organes[org].append(ent.text)
                         desc_count = desc_count + 1
-
-        if output_format == 'Highlighted':
-            colors = {'ORGANE': "#cdcd00", "DESCRIPTEUR": "#85C1E9"}
-            options = {"ents": ['ORGANE', 'DESCRIPTEUR'], "colors": colors}
-
-            count_str = str(org_count)+" ORGANE et "+str(desc_count)+" DESCRIPTEUR."
-            st.info(count_str)
-
-            html = displacy.render(doc,style="ent", options=options)
-            html = html.replace("\n\n","\n")
-            with st.expander("Affichage NER"):
-                st.write(HTML_WRAPPER.format(html),unsafe_allow_html=True)
-        
-        elif output_format == 'Vue table':
-            st.markdown("""
+            def vue_ner_output(ent): 
+                main_org_dict = {}
+                main_dict = {}
+                for ent in doc.ents:
+                    if ent.label_ == 'ORGANE':
+                        org = ent.text
+                        main_org_dict[org] = [] 
+                    else:
+                        if ent.text and org:
+                            main_org_dict[org].append(ent.text)
+                            main_dict[ent.text] = ent.label_
                 
-                Chaque terme `DESCRIPTEUR` est associé au terme `ORGANE` qu'il précède.
-            """)
+                dict_out = {}
+                for i in main_org_dict.keys():
+                    dict_out[i] = {}
+                    for j in main_org_dict[i]:
+                        row_dict = {}
+                        dict_out[i][j]= main_dict[j]
+                dict_out = {}
+                for i in main_org_dict.keys():
+                    dict_out[i] = {}
+                    for j in main_org_dict[i]:
+                        row_dict = {}
+                        dict_out[i][j]= main_dict[j]
 
-            # organes = {}
-            # org = ""
-            # org_count = 0
-            # desc_count = 0
-            # for ent in doc.ents:
-            #     if ent.label_ == 'ORGANE':
-            #         org = ent.text
-            #         organes[org] = []  
-            #         org_count = org_count + 1
-            #     else:
-            #         organes[org].append(ent.text)
-            #         desc_count = desc_count + 1
-            if doc.ents:
-                for o in organes.keys():
-                    organes[o] = ", ".join(organes[o])
+                
 
-                df_out = pd.DataFrame(organes.items(), columns=['ORGANE', 'DESCRIPTEUR'])
-                st.dataframe(df_out)
+                return dict_out, main_org_dict, main_dict
+
+            
+            def vue_dataframe(main_org_dict, main_dict):
+                # create dataframe
+                dict_types={}
+                dict_types['ORGANE'] = list(main_org_dict.keys())
+                for l in labels:
+                    if l != 'ORGANE':
+                        dict_types[l] = []
+                        for i in main_org_dict.keys():
+                            row = []
+                            for j in main_org_dict[i]:
+                                if main_dict[j] == l:
+                                    row.append(j)
+                                else:
+                                    row.append("-")
+                            row = [e for e in row if e != "-"]
+                            dict_types[l].append(", ".join(row))
+
+                df_fined = pd.DataFrame.from_dict(dict_types)
+                return df_fined
+        if model_choice == 'Modèle v4 (fine-grained)' or model_choice == 'Modèle v4 (fine-grained updated)':
+            labels = list(set(labels))
+            
+
+            if output_format == 'Highlighted':
+                with st.sidebar:
+                    named_entities_choice = st.multiselect('Entités nommées', labels, labels)
+                colors = {
+                    'ORGANE': "#cdcd00", 
+                    "DESCRIPTEUR": "#85C1E9",
+                    "FORME": "#60d394",
+                    "MESURE": "#b1b6a6",
+                    "STRUCTURE": "#e0aaff",
+                    "DISPOSITION": "#fb8b24",
+                    "COULEUR": "#ddb892",
+                    "SURFACE": "#99582a",
+                    "POSITION": "#9a031e",
+                    "DEVELOPPEMENT": "#ff7d00"}
+
+                # options = {"ents": ['ORGANE', 'DESCRIPTEUR', 'FORME', 'MESURE', 'STRUCTURE', 'DISPOSITION', 'COULEUR', 'SURFACE', 'POSITION', 'DEVELOPPEMENT'], "colors": colors}
+
+                count_str = str(org_count)+" ORGANE et "+str(desc_count)+" DESCRIPTEUR."
+                st.info(count_str)
+                
+                with st.expander("Affichage NER"):
+                    options = {
+                        "ents": named_entities_choice, 
+                        "colors": colors
+                        }        
+
+                    html = displacy.render(doc,style="ent", options=options)
+                    html = html.replace("\n\n","\n")  
+                    st.write(HTML_WRAPPER.format(html),unsafe_allow_html=True)
+            elif output_format == 'Vue dataframe':
+                
+                # ORGANIZE DATA IN DICT
+                dict_out, main_org_dict, main_dict = vue_ner_output(doc.ents)
+                # TO DATAFRAME
+                df_fined = vue_dataframe(main_org_dict, main_dict)
+                with st.expander("Vue dataframe"):
+                    st.table(df_fined)
+
+            elif output_format == 'Vue dictionnaire':
+                # ORGANIZE DATA IN DICT
+                # st.markdown("""
+                # ### Vue dictionnaire
+                # """)
+                with st.expander("Vue dictionnaire"):
+                    dict_out, main_org_dict, main_dict = vue_ner_output(doc.ents)
+                    st.write(dict_out)
+        else:
+
+            if output_format == 'Highlighted':
+                colors = {'ORGANE': "#cdcd00", "DESCRIPTEUR": "#85C1E9"}
+                options = {"ents": ['ORGANE', 'DESCRIPTEUR'], "colors": colors}
+
+                count_str = str(org_count)+" ORGANE et "+str(desc_count)+" DESCRIPTEUR."
+                st.info(count_str)
+
+                html = displacy.render(doc,style="ent", options=options)
+                html = html.replace("\n\n","\n")
+                with st.expander("Affichage NER"):
+                    st.write(HTML_WRAPPER.format(html),unsafe_allow_html=True)
+            
+            elif output_format == 'Vue dataframe':
+                st.markdown("""
+                    
+                    Chaque terme `DESCRIPTEUR` est associé au terme `ORGANE` qu'il précède.
+                """)
+                
+                if doc.ents:
+                    for o in organes.keys():
+                        organes[o] = ", ".join(organes[o])
+
+                    df_out = pd.DataFrame(organes.items(), columns=['ORGANE', 'DESCRIPTEUR'])
+                    with st.expander("Vue dataframe"):
+                        st.table(df_out)
+
+                
 
         
